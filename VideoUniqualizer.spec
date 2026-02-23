@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller spec file for Video Uniqualizer.
+PyInstaller spec file for Video Uniqualizer (OPTIMIZED).
 Use this for manual builds: pyinstaller VideoUniqualizer.spec
 """
 
@@ -31,6 +31,64 @@ icon_file = os.path.join(SCRIPT_DIR, 'build', 'app_icon.icns')
 if not os.path.isfile(icon_file):
     icon_file = None
 
+# ─── Massive exclude list to cut ~100 MB of bloat ───────
+EXCLUDES = [
+    # Qt modules we don't use (biggest savings)
+    'PyQt6.QtNetwork',
+    'PyQt6.QtDBus',
+    'PyQt6.QtSvg',
+    'PyQt6.QtSvgWidgets',
+    'PyQt6.QtOpenGL',
+    'PyQt6.QtOpenGLWidgets',
+    'PyQt6.QtQml',
+    'PyQt6.QtQuick',
+    'PyQt6.QtQuickWidgets',
+    'PyQt6.QtQuick3D',
+    'PyQt6.QtDesigner',
+    'PyQt6.QtHelp',
+    'PyQt6.QtMultimedia',
+    'PyQt6.QtMultimediaWidgets',
+    'PyQt6.QtPdf',
+    'PyQt6.QtPdfWidgets',
+    'PyQt6.QtPositioning',
+    'PyQt6.QtBluetooth',
+    'PyQt6.QtNfc',
+    'PyQt6.QtWebChannel',
+    'PyQt6.QtWebEngineCore',
+    'PyQt6.QtWebEngineWidgets',
+    'PyQt6.QtWebSockets',
+    'PyQt6.QtRemoteObjects',
+    'PyQt6.QtSensors',
+    'PyQt6.QtSerialPort',
+    'PyQt6.QtSql',
+    'PyQt6.QtTest',
+    'PyQt6.QtXml',
+    'PyQt6.Qt3DCore',
+    'PyQt6.Qt3DRender',
+    'PyQt6.Qt3DInput',
+    'PyQt6.Qt3DLogic',
+    'PyQt6.Qt3DExtras',
+    'PyQt6.Qt3DAnimation',
+    'PyQt6.QtCharts',
+    'PyQt6.QtDataVisualization',
+    'PyQt6.QtStateMachine',
+    'PyQt6.QtTextToSpeech',
+    'PyQt6.QtVirtualKeyboard',
+    'PyQt6.QtHttpServer',
+    'PyQt6.QtSpatialAudio',
+    # Python stdlib we don't use
+    'tkinter', '_tkinter',
+    'sqlite3',
+    'unittest', 'pydoc', 'doctest',
+    'xmlrpc', 'ftplib', 'imaplib', 'smtplib', 'nntplib', 'poplib', 'telnetlib',
+    'turtle', 'turtledemo',
+    'test', 'idlelib', 'lib2to3',
+    'ensurepip', 'venv', 'distutils',
+    'setuptools', 'pip', 'pkg_resources',
+    # Large third-party (in case they sneak in)
+    'numpy', 'PIL', 'matplotlib', 'scipy', 'pandas',
+]
+
 a = Analysis(
     [os.path.join(SRC_DIR, 'main.py')],
     pathex=[SRC_DIR],
@@ -45,7 +103,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=EXCLUDES,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -62,7 +120,7 @@ exe = EXE(
     name='Video Uniqualizer',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=True,           # Strip debug symbols
     upx=False,
     console=False,
     disable_windowed_traceback=False,
@@ -77,7 +135,7 @@ coll = COLLECT(
     a.binaries,
     a.zipfiles,
     a.datas,
-    strip=False,
+    strip=True,           # Strip all collected binaries
     upx=False,
     upx_exclude=[],
     name='Video Uniqualizer',
