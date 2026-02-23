@@ -1,0 +1,17 @@
+# Build outputs
+build/
+dist/
+*.spec.bak
+__pycache__/
+*.pyc
+
+# ffmpeg binaries (downloaded during build)
+ffmpeg_bin/
+
+# macOS
+.DS_Store
+*.app
+
+# Python
+*.egg-info/
+*.egg
