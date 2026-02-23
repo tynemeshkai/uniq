@@ -5,6 +5,9 @@ dist/
 __pycache__/
 *.pyc
 
+# Virtual environment
+.venv/
+
 # ffmpeg binaries (downloaded during build)
 ffmpeg_bin/
 

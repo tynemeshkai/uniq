@@ -13,20 +13,34 @@ SRC_DIR="$SCRIPT_DIR/src"
 BUILD_DIR="$SCRIPT_DIR/build"
 DIST_DIR="$SCRIPT_DIR/dist"
 FFMPEG_DIR="$SCRIPT_DIR/ffmpeg_bin"
+VENV_DIR="$SCRIPT_DIR/.venv"
 
 echo "============================================"
 echo "  Building $APP_NAME"
 echo "============================================"
 
-# ─── Step 1: Check/install Python dependencies ──────────
+# ─── Step 1: Create venv & install dependencies ─────────
 echo ""
-echo "[1/4] Checking Python dependencies..."
+echo "[1/5] Setting up Python virtual environment..."
 
-pip3 install --quiet PyQt6 pyinstaller
+if [ ! -d "$VENV_DIR" ]; then
+    echo "  Creating virtual environment..."
+    python3 -m venv "$VENV_DIR"
+fi
+
+# Activate venv
+source "$VENV_DIR/bin/activate"
+
+echo "  Installing dependencies..."
+pip install --quiet --upgrade pip
+pip install --quiet PyQt6 pyinstaller
+
+echo "  Python: $(python3 --version)"
+echo "  pip packages installed."
 
 # ─── Step 2: Download ffmpeg if not present ──────────────
 echo ""
-echo "[2/4] Checking ffmpeg binaries..."
+echo "[2/5] Checking ffmpeg binaries..."
 
 if [ ! -f "$FFMPEG_DIR/ffmpeg" ] || [ ! -f "$FFMPEG_DIR/ffprobe" ]; then
     echo "  Downloading ffmpeg static build for macOS..."
@@ -36,14 +50,13 @@ if [ ! -f "$FFMPEG_DIR/ffmpeg" ] || [ ! -f "$FFMPEG_DIR/ffprobe" ]; then
     ARCH=$(uname -m)
     if [ "$ARCH" = "arm64" ]; then
         echo "  Detected Apple Silicon (arm64)"
-        # evermeet.cx provides macOS static builds
-        FFMPEG_URL="https://evermeet.cx/ffmpeg/ffmpeg-7.1.1.zip"
-        FFPROBE_URL="https://evermeet.cx/ffmpeg/ffprobe-7.1.1.zip"
     else
         echo "  Detected Intel (x86_64)"
-        FFMPEG_URL="https://evermeet.cx/ffmpeg/ffmpeg-7.1.1.zip"
-        FFPROBE_URL="https://evermeet.cx/ffmpeg/ffprobe-7.1.1.zip"
     fi
+
+    # evermeet.cx provides macOS universal static builds
+    FFMPEG_URL="https://evermeet.cx/ffmpeg/ffmpeg-7.1.1.zip"
+    FFPROBE_URL="https://evermeet.cx/ffmpeg/ffprobe-7.1.1.zip"
 
     # Download ffmpeg
     if [ ! -f "$FFMPEG_DIR/ffmpeg" ]; then
@@ -74,16 +87,16 @@ echo "  ffprobe: $("$FFMPEG_DIR/ffprobe" -version 2>&1 | head -1)" || echo "  WA
 
 # ─── Step 3: Generate app icon (icns) ───────────────────
 echo ""
-echo "[3/4] Generating app icon..."
+echo "[3/5] Generating app icon..."
 
 python3 "$SRC_DIR/gen_icns.py"
 
 # ─── Step 4: Build with PyInstaller ─────────────────────
 echo ""
-echo "[4/4] Building .app with PyInstaller..."
+echo "[4/5] Building .app with PyInstaller..."
 
 # Clean previous builds
-rm -rf "$BUILD_DIR" "$DIST_DIR"
+rm -rf "$DIST_DIR"
 
 pyinstaller \
     --name "$APP_NAME" \
@@ -106,12 +119,30 @@ pyinstaller \
     --specpath "$BUILD_DIR" \
     "$SRC_DIR/main.py"
 
+# ─── Step 5: Create DMG ─────────────────────────────────
+echo ""
+echo "[5/5] Creating DMG..."
+
+DMG_PATH="$DIST_DIR/$APP_NAME.dmg"
+rm -f "$DMG_PATH"
+
+hdiutil create \
+    -volname "$APP_NAME" \
+    -srcfolder "$DIST_DIR/$APP_NAME.app" \
+    -ov -format UDZO \
+    "$DMG_PATH"
+
+# Deactivate venv
+deactivate
+
 echo ""
 echo "============================================"
 echo "  BUILD COMPLETE!"
-echo "  App: $DIST_DIR/$APP_NAME.app"
 echo "============================================"
 echo ""
-echo "To distribute, you can:"
-echo "  1. Copy the .app to another Mac"
-echo "  2. Or create a DMG: hdiutil create -volname '$APP_NAME' -srcfolder '$DIST_DIR/$APP_NAME.app' -ov -format UDZO '$DIST_DIR/$APP_NAME.dmg'"
+echo "  App: $DIST_DIR/$APP_NAME.app"
+echo "  DMG: $DMG_PATH"
+echo ""
+echo "  Copy the .dmg or .app to any Mac — it will"
+echo "  work without Python or ffmpeg installed."
+echo ""
