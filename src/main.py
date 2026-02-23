@@ -297,6 +297,15 @@ class ParamsPanel(QWidget):
         layout = QVBoxLayout(w)
         layout.setSpacing(8)
 
+        self.chk_match_source = QCheckBox("Match source resolution (avoid upscaling)")
+        self.chk_match_source.setToolTip(
+            "When enabled, output keeps the original video resolution.\n"
+            "This prevents file size bloat from unnecessary upscaling.\n"
+            "Target Width/Height below are used only when this is off."
+        )
+        self.chk_match_source.toggled.connect(self._on_match_source_toggled)
+        layout.addWidget(self.chk_match_source)
+
         self.spin_width = QSpinBox()
         self.spin_width.setRange(320, 7680)
         self.spin_width.setSingleStep(10)
@@ -357,6 +366,10 @@ class ParamsPanel(QWidget):
         layout.addStretch()
         return w
 
+    def _on_match_source_toggled(self, checked):
+        self.spin_width.setEnabled(not checked)
+        self.spin_height.setEnabled(not checked)
+
     def _choose_overlay(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Select Overlay Video", "",
@@ -392,8 +405,8 @@ class ParamsPanel(QWidget):
         self.spin_bright_max.setValue(0.04)
         self.spin_hue_max.setValue(6.0)
 
-        self.spin_noise_min.setValue(4)
-        self.spin_noise_max.setValue(12)
+        self.spin_noise_min.setValue(2)
+        self.spin_noise_max.setValue(6)
         self.spin_unsharp_min.setValue(-0.4)
         self.spin_unsharp_max.setValue(0.6)
         self.spin_vignette_min.setValue(0.05)
@@ -405,10 +418,13 @@ class ParamsPanel(QWidget):
         self.spin_adelay_min.setValue(30)
         self.spin_adelay_max.setValue(180)
 
+        self.chk_match_source.setChecked(True)
         self.spin_width.setValue(1080)
         self.spin_height.setValue(1920)
-        self.spin_crf.setValue(23)
-        self.combo_preset.setCurrentText("fast")
+        self.spin_width.setEnabled(False)
+        self.spin_height.setEnabled(False)
+        self.spin_crf.setValue(26)
+        self.combo_preset.setCurrentText("medium")
         self.chk_fake_meta.setChecked(True)
 
         self.spin_ov_opacity_min.setValue(0.04)
@@ -454,6 +470,7 @@ class ParamsPanel(QWidget):
         p.opacity = round(random.uniform(self.spin_ov_opacity_min.value(), self.spin_ov_opacity_max.value()), 2)
         p.ov_speed = round(random.uniform(0.88, 1.12), 2)
 
+        p.match_source_size = self.chk_match_source.isChecked()
         p.target_width = self.spin_width.value()
         p.target_height = self.spin_height.value()
         p.crf = self.spin_crf.value()
