@@ -99,9 +99,8 @@ class UniqueParams:
     # Output
     target_width: int = TARGET_WIDTH
     target_height: int = TARGET_HEIGHT
-    match_source_size: bool = True   # Use source resolution instead of forcing target
     crf: int = 26
-    preset: str = "medium"
+    preset: str = "fast"
 
     # Meta
     fake_meta: bool = True
@@ -131,7 +130,7 @@ class UniqueParams:
         p.hue_shift = round(random.uniform(-6, 6), 1)
 
         p.unsharp_amount = round(random.uniform(-0.4, 0.6), 2)
-        p.noise_strength = random.randint(2, 6)
+        p.noise_strength = random.randint(4, 12)
         p.noise_flags = random.choice(["t", "u", "t+u"])
         p.do_hflip = random.choice([True, False])
         p.vignette_angle = round(random.uniform(0.05, 0.25), 2)
@@ -162,24 +161,6 @@ def check_audio_stream(file_path: str) -> bool:
         return len(out) > 0
     except Exception:
         return False
-
-
-def get_video_resolution(file_path: str) -> Optional[tuple]:
-    """Get video width and height."""
-    cmd = [
-        get_ffprobe_path(), "-v", "error",
-        "-select_streams", "v:0",
-        "-show_entries", "stream=width,height",
-        "-of", "csv=p=0:s=x", file_path
-    ]
-    try:
-        out = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8", errors="ignore").strip()
-        parts = out.split("x")
-        if len(parts) == 2:
-            return int(parts[0]), int(parts[1])
-    except Exception:
-        pass
-    return None
 
 
 def get_video_duration(file_path: str) -> Optional[float]:
@@ -229,16 +210,8 @@ def process_single_video(
     has_overlay = overlay_path and os.path.isfile(overlay_path)
     has_audio = check_audio_stream(input_path)
     duration = get_video_duration(input_path)
-    source_res = get_video_resolution(input_path)
 
     p = params
-
-    # Use source resolution to avoid upscaling (major file size savings)
-    if p.match_source_size and source_res:
-        src_w, src_h = source_res
-        # Round to even numbers (required by H.264)
-        p.target_width = src_w if src_w % 2 == 0 else src_w + 1
-        p.target_height = src_h if src_h % 2 == 0 else src_h + 1
 
     # Safety: trim should not eat more than 40% of video
     if duration and (p.trim_start + p.trim_end) >= duration * 0.4:
@@ -401,7 +374,6 @@ def process_batch(
             # Copy non-random settings from template
             if params_template:
                 params.overlay_file = params_template.overlay_file
-                params.match_source_size = params_template.match_source_size
                 params.target_width = params_template.target_width
                 params.target_height = params_template.target_height
                 params.crf = params_template.crf
