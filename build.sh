@@ -109,6 +109,8 @@ pyinstaller \
     --windowed \
     --onedir \
     --icon "$BUILD_DIR/app_icon.icns" \
+    --osx-bundle-identifier "com.uniqualizer.video" \
+    --codesign-identity "-" \
     --add-data "$FFMPEG_DIR/ffmpeg:ffmpeg" \
     --add-data "$FFMPEG_DIR/ffprobe:ffmpeg" \
     --add-data "$SRC_DIR/engine.py:." \
@@ -262,6 +264,41 @@ for fw in QtNetwork QtDBus QtSvg QtOpenGL QtQml QtQuick QtPdf \
     find "$APP_DIR" -name "${fw}.so" -delete 2>/dev/null || true
 done
 
+# ─── Step 5b: Re-sign all binaries (CRITICAL for Apple Silicon) ─
+echo ""
+echo "[5b/7] Code signing (ad-hoc) for Apple Silicon..."
+
+# After stripping, all code signatures are invalid.
+# macOS on ARM64 KILLS any unsigned Mach-O binary.
+# We must re-sign every .so, .dylib, .framework, and the main executable.
+
+echo "  Signing .so files..."
+find "$APP_DIR" -name '*.so' -exec codesign --force --sign - {} \; 2>/dev/null || true
+
+echo "  Signing .dylib files..."
+find "$APP_DIR" -name '*.dylib' -exec codesign --force --sign - {} \; 2>/dev/null || true
+
+echo "  Signing frameworks..."
+find "$APP_DIR" -type d -name '*.framework' | while read fw; do
+    codesign --force --sign - "$fw" 2>/dev/null || true
+done
+
+echo "  Signing main executable..."
+codesign --force --sign - "$MACOS_DIR/$APP_NAME" 2>/dev/null || true
+
+echo "  Signing ffmpeg binaries..."
+codesign --force --sign - "$MACOS_DIR/ffmpeg/ffmpeg" 2>/dev/null || true
+codesign --force --sign - "$MACOS_DIR/ffprobe/ffprobe" 2>/dev/null || true
+# Also try alternate paths PyInstaller might use
+find "$APP_DIR" -name 'ffmpeg' -type f -exec codesign --force --sign - {} \; 2>/dev/null || true
+find "$APP_DIR" -name 'ffprobe' -type f -exec codesign --force --sign - {} \; 2>/dev/null || true
+
+echo "  Signing the entire .app bundle..."
+codesign --force --deep --sign - "$APP_DIR"
+
+echo "  Verifying signature..."
+codesign --verify --deep --strict "$APP_DIR" && echo "  ✓ Signature valid" || echo "  ✗ Signature verification failed!"
+
 # Size report
 echo ""
 APP_SIZE=$(du -sh "$APP_DIR" | cut -f1)
@@ -269,7 +306,7 @@ echo "  App size after optimization: $APP_SIZE"
 
 # ─── Step 6: Create DMG ─────────────────────────────────
 echo ""
-echo "[6/6] Creating DMG..."
+echo "[6/7] Creating DMG..."
 
 DMG_PATH="$DIST_DIR/$APP_NAME.dmg"
 rm -f "$DMG_PATH"

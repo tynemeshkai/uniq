@@ -125,7 +125,7 @@ exe = EXE(
     console=False,
     disable_windowed_traceback=False,
     target_arch=None,
-    codesign_identity=None,
+    codesign_identity='-',     # Ad-hoc sign (required for Apple Silicon)
     entitlements_file=None,
     icon=icon_file,
 )
